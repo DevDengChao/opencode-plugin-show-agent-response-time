@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="light">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Agent Response Time · OpenCode Plugin Demo</title>
+  </head>
+  <body>
+    <div class="demo-shell">
+      <header class="demo-header">
+        <div>
+          <p class="demo-eyebrow">OpenCode Desktop plugin</p>
+          <h1>Agent Response Time</h1>
+          <p class="demo-description">
+            悬浮在助手回复底部的时长上，查看这一轮响应完成的具体时间。
+          </p>
+        </div>
+        <button id="theme-toggle" class="demo-theme-toggle" type="button">
+          切换暗色
+        </button>
+      </header>
+
+      <main class="demo-timeline" data-slot="session-timeline-scroll">
+        <article class="demo-turn" data-timeline-row="AssistantPart" data-message-id="msg_user_normal">
+          <div class="demo-user-message">继续。</div>
+
+          <div data-component="text-part" data-timeline-part-id="part_text_normal">
+            <div data-slot="text-part-body" class="demo-response">
+              <p>CPT 终端已重新拉起并登录（pid 8892）。</p>
+              <p>
+                下一步：先修“平仓后立即再触发”那条，把笔数拉到 120+/日，再请你点一下
+                MT4 的「EA 交易测试」（Ctrl+R）让我接手填参数。
+              </p>
+            </div>
+
+            <div data-slot="text-part-copy-wrapper">
+              <button class="demo-copy-button" type="button" aria-label="复制回复">⧉</button>
+              <span data-slot="text-part-meta">
+                <span data-slot="text-part-meta-item">Build</span>
+                <span data-slot="text-part-meta-separator">·</span>
+                <span data-slot="text-part-meta-item">DeepSeek V4.1 Flash</span>
+                <span data-slot="text-part-meta-item" data-variant="">Fast</span>
+                <span data-slot="text-part-meta-separator">·</span>
+                <span data-slot="text-part-meta-item">4 分钟 46 秒</span>
+              </span>
+            </div>
+          </div>
+        </article>
+
+        <article
+          class="demo-turn"
+          data-timeline-row="AssistantPart"
+          data-message-id="msg_user_interrupted"
+        >
+          <div class="demo-user-message">再试一次，如果卡住就中断。</div>
+
+          <div data-component="text-part" data-timeline-part-id="part_text_interrupted">
+            <div data-slot="text-part-body" class="demo-response">
+              <p>已收到。我先检查模拟器连接状态，然后继续对比两台服务器的参数。</p>
+            </div>
+
+            <div data-slot="text-part-copy-wrapper" data-interrupted="">
+              <button class="demo-copy-button" type="button" aria-label="复制回复">⧉</button>
+              <span data-slot="text-part-meta">
+                <span data-slot="text-part-meta-item">Build</span>
+                <span data-slot="text-part-meta-separator">·</span>
+                <span data-slot="text-part-meta-item">DeepSeek V4.1 Flash</span>
+                <span data-slot="text-part-meta-item" data-variant="">Fast</span>
+                <span data-slot="text-part-meta-separator">·</span>
+                <span data-slot="text-part-meta-item">2 分钟 13 秒</span>
+                <span data-slot="text-part-meta-separator">·</span>
+                <span data-slot="text-part-meta-item">Interrupted</span>
+              </span>
+            </div>
+          </div>
+        </article>
+      </main>
+
+      <p class="demo-footnote">
+        提示：把鼠标移到“4 分钟 46 秒”或“2 分钟 13 秒”上，会显示完整日期、时区和秒级时间。
+      </p>
+    </div>
+
+    <script type="module" src="/demo.ts"></script>
+  </body>
+</html>
