@@ -57,10 +57,10 @@
     "glob@^10.0.0": "^10.5.0"
   },
   "devDependencies": {
-    "@types/node": "^24.0.0",
+    "@types/node": "^26.6.6",
     "jsdom": "^27.4.0",
     "solid-js": "^1.9.18",
-    "typescript": "^5.9.3",
+    "typescript": "^7.0.2",
     "vite": "^8.3.7",
     "vite-plugin-solid": "^2.11.15",
     "vitest": "^5.1.0"
