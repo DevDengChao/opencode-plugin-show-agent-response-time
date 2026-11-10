@@ -50,7 +50,7 @@ OpenCode 默认会在 agent 回复底部显示本轮耗时，例如 `4 分钟 46
 
 - OpenCode Desktop **2.2.x**（本项目在 2.2.1 上开发和验证）
 - 使用 npm 安装时不需要额外安装 Node.js
-- 从源码构建时需要 Node.js **20.19+** 和 npm
+- 从源码构建时需要 Node.js **22.22.2+**（24.x 至少为 **24.15.0**）和 npm
 - Windows、macOS 或 Linux 上的 OpenCode Desktop
 
 ### 从 npm 安装（推荐）
@@ -77,7 +77,7 @@ OpenCode 默认会在 agent 回复底部显示本轮耗时，例如 `4 分钟 46
 
 ```jsonc
 "plugins": [
-  "@devdengchao/opencode-plugin-show-agent-response-time@0.1.1"
+  "@devdengchao/opencode-plugin-show-agent-response-time@0.1.2"
 ]
 ```
 

@@ -50,7 +50,7 @@ The tooltip shows when the turn **completed**, matching the end of the displayed
 
 - OpenCode Desktop **2.2.x** (developed and verified on 2.2.1)
 - No extra Node.js installation is needed when installing from npm
-- Node.js **20.19+** and npm when building from source
+- Node.js **22.22.2+** (at least **24.15.0** for 24.x) and npm when building from source
 - OpenCode Desktop on Windows, macOS or Linux
 
 ### Install from npm (recommended)
@@ -77,7 +77,7 @@ To pin a version:
 
 ```jsonc
 "plugins": [
-  "@devdengchao/opencode-plugin-show-agent-response-time@0.1.1"
+  "@devdengchao/opencode-plugin-show-agent-response-time@0.1.2"
 ]
 ```
 

@@ -7,6 +7,22 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 
 ## [Unreleased]
 
+## [0.1.2] - 2026-11-11
+
+### Changed
+
+- Updated the OpenCode plugin SDK to 2.2.7.
+- Updated all direct development dependencies to their latest stable versions, including TypeScript 7, Vite 8, Vitest 5 and jsdom 31.
+- Refreshed transitive dependencies and removed the unused glob override.
+- Updated source development requirements and CI to Node.js 22.22.2 and 24.15.0 on Windows and Ubuntu.
+- Updated the pinned installation examples to 0.1.2.
+
+### Notes
+
+- Existing response-time behavior and package exports are unchanged; Desktop compatibility was previously verified on OpenCode 2.2.1.
+- npm audit reports 21 moderate findings in the OpenCode SDK's transitive dependency tree with no compatible fix currently available.
+- The OpenCode GUI build plugin emits an inlineDynamicImports deprecation warning under Vite 8; the build succeeds.
+
 ## [0.1.1] - 2026-11-10
 
 ### Added
@@ -41,6 +57,7 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 - The Desktop GUI plugin API is experimental and may change.
 - The implementation relies on OpenCode's session timeline DOM structure.
 
-[Unreleased]: https://github.com/DevDengChao/opencode-plugin-show-agent-response-time/compare/v0.1.1...HEAD
+[Unreleased]: https://github.com/DevDengChao/opencode-plugin-show-agent-response-time/compare/v0.1.2...HEAD
+[0.1.2]: https://github.com/DevDengChao/opencode-plugin-show-agent-response-time/releases/tag/v0.1.2
 [0.1.1]: https://github.com/DevDengChao/opencode-plugin-show-agent-response-time/releases/tag/v0.1.1
 [0.1.0]: https://github.com/DevDengChao/opencode-plugin-show-agent-response-time/releases/tag/v0.1.0

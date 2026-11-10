@@ -25,7 +25,8 @@ jobs:
           - ubuntu-latest
           - windows-latest
         node:
-          - 22
+          - 22.22.2
+          - 24.15.0
 
     steps:
       - name: Checkout
