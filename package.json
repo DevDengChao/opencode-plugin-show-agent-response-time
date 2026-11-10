@@ -1,6 +1,6 @@
 {
   "name": "@devdengchao/opencode-plugin-show-agent-response-time",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Show the exact completion time of agent responses in OpenCode Desktop sessions",
   "license": "MIT",
   "author": "DevDengChao",

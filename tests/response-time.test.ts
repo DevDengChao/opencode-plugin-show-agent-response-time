@@ -12,7 +12,14 @@ function rowMarkup(options: { interrupted?: boolean } = {}): string {
   return `
     <div data-timeline-row="AssistantPart" data-message-id="msg_user_1">
       <div data-component="text-part" data-timeline-part-id="part_text_1">
-        <div data-slot="text-part-body">Hello</div>
+        <div data-slot="text-part-body">
+          <div data-component="markdown">
+            <p>Hello</p>
+            <p>Second line with <a href="#">a link</a></p>
+            <h2>Heading</h2>
+            <ul><li>List item</li></ul>
+          </div>
+        </div>
         <div data-slot="text-part-copy-wrapper"${options.interrupted ? ' data-interrupted=""' : ""}>
           <button type="button">copy</button>
           <span data-slot="text-part-meta">
@@ -183,6 +190,137 @@ describe("response time triggers", () => {
     const wrapper = document.querySelector<HTMLElement>('[data-slot="text-part-copy-wrapper"]')!
 
     expect(findResponseTimeItem(wrapper)?.textContent).toBe("4 分钟 46 秒")
+  })
+})
+
+describe("response text hover", () => {
+  function paragraph(index = 0): HTMLElement {
+    const element = document.querySelectorAll<HTMLElement>("p")[index]
+
+    expect(element).toBeTruthy()
+    return element!
+  }
+
+  function hover(element: HTMLElement, x: number, y: number) {
+    element.dispatchEvent(new MouseEvent("pointerover", { bubbles: true, clientX: x, clientY: y }))
+  }
+
+  it("shows the completion time when hovering a response paragraph", () => {
+    vi.useFakeTimers()
+    setup()
+
+    const target = paragraph()
+    hover(target, 120, 240)
+    vi.runOnlyPendingTimers()
+
+    const tooltip = document.querySelector<HTMLElement>("#art-response-time-tooltip")
+
+    expect(tooltip?.textContent).toBe(`time:${COMPLETED}`)
+    expect(tooltip?.getAttribute("data-placement")).toBe("bottom")
+    expect(tooltip?.style.left).toBe("132px")
+    expect(tooltip?.style.top).toBe("254px")
+    expect(target.getAttribute("aria-describedby")).toContain("art-response-time-tooltip")
+
+    target.dispatchEvent(
+      new MouseEvent("pointerout", { bubbles: true, relatedTarget: document.body }),
+    )
+    vi.runOnlyPendingTimers()
+
+    expect(document.querySelector("#art-response-time-tooltip")).toBeNull()
+  })
+
+  it("uses the last pointer position before opening", () => {
+    vi.useFakeTimers()
+    setup()
+
+    const target = paragraph()
+    hover(target, 100, 100)
+    target.dispatchEvent(
+      new MouseEvent("pointermove", { bubbles: true, clientX: 200, clientY: 220 }),
+    )
+    vi.runOnlyPendingTimers()
+
+    const tooltip = document.querySelector<HTMLElement>("#art-response-time-tooltip")
+
+    expect(tooltip?.style.left).toBe("212px")
+    expect(tooltip?.style.top).toBe("234px")
+  })
+
+  it("works on list items and headings", () => {
+    vi.useFakeTimers()
+    setup()
+
+    const item = document.querySelector<HTMLElement>("li")!
+    hover(item, 80, 80)
+    vi.runOnlyPendingTimers()
+
+    expect(document.querySelector("#art-response-time-tooltip")?.textContent).toBe(
+      `time:${COMPLETED}`,
+    )
+
+    const heading = document.querySelector<HTMLElement>("h2")!
+    hover(heading, 100, 120)
+    vi.runOnlyPendingTimers()
+
+    expect(document.querySelector("#art-response-time-tooltip")?.textContent).toBe(
+      `time:${COMPLETED}`,
+    )
+    expect(heading.getAttribute("aria-describedby")).toContain("art-response-time-tooltip")
+  })
+
+  it("does not trigger on a link inside the response", () => {
+    vi.useFakeTimers()
+    setup()
+
+    const link = document.querySelector<HTMLElement>("a")!
+    hover(link, 120, 240)
+    vi.runOnlyPendingTimers()
+
+    expect(document.querySelector("#art-response-time-tooltip")).toBeNull()
+  })
+
+  it("cancels before opening when the pointer is pressed", () => {
+    vi.useFakeTimers()
+    setup()
+
+    const target = paragraph()
+    hover(target, 120, 240)
+    target.dispatchEvent(new MouseEvent("pointerdown", { bubbles: true }))
+    vi.runOnlyPendingTimers()
+
+    expect(document.querySelector("#art-response-time-tooltip")).toBeNull()
+  })
+
+  it("moves the tooltip when hovering another paragraph", () => {
+    vi.useFakeTimers()
+    setup()
+
+    const [first, second] = Array.from(document.querySelectorAll<HTMLElement>("p"))
+    hover(first, 100, 100)
+    vi.runOnlyPendingTimers()
+
+    first.dispatchEvent(
+      new MouseEvent("pointerout", { bubbles: true, relatedTarget: second }),
+    )
+    hover(second, 300, 300)
+    vi.runOnlyPendingTimers()
+
+    const tooltip = document.querySelector<HTMLElement>("#art-response-time-tooltip")
+
+    expect(tooltip?.style.left).toBe("312px")
+    expect(tooltip?.style.top).toBe("314px")
+    expect(second.getAttribute("aria-describedby")).toContain("art-response-time-tooltip")
+    expect(first.hasAttribute("aria-describedby")).toBe(false)
+  })
+
+  it("shows nothing when the turn has no completion time", () => {
+    vi.useFakeTimers()
+    setup(timelineMarkup(), { resolveTime: () => undefined })
+
+    hover(paragraph(), 120, 240)
+    vi.runOnlyPendingTimers()
+
+    expect(document.querySelector("#art-response-time-tooltip")).toBeNull()
   })
 })
 

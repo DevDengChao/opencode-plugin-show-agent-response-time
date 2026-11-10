@@ -3,6 +3,10 @@ import { formatFullTime } from "./format-time"
 const TIMELINE_SELECTOR = '[data-slot="session-timeline-scroll"]'
 const TEXT_PART_SELECTOR = '[data-component="text-part"]'
 const COPY_WRAPPER_SELECTOR = '[data-slot="text-part-copy-wrapper"]'
+const TEXT_PART_BODY_SELECTOR = '[data-slot="text-part-body"]'
+const BODY_BLOCK_SELECTOR = "p, h1, h2, h3, h4, h5, h6, li, blockquote, pre, table"
+const INTERACTIVE_SELECTOR =
+  'a, button, input, textarea, select, [contenteditable="true"], [role="button"], [data-component="tooltip-v2-trigger"], [data-art-ui]'
 const META_SELECTOR = '[data-slot="text-part-meta"]'
 const META_ITEM_SELECTOR = '[data-slot="text-part-meta-item"]'
 const OWN_ATTRIBUTE = "data-art-response-time"
@@ -46,9 +50,15 @@ interface TriggerInput {
   partID?: string
 }
 
+interface Point {
+  x: number
+  y: number
+}
+
 class TooltipController {
   private element: HTMLElement | null = null
   private triggerElement: HTMLElement | null = null
+  private point: Point | null = null
   private closeTimer: number | undefined
   private unbind: (() => void) | null = null
 
@@ -61,6 +71,16 @@ class TooltipController {
   }
 
   show(trigger: HTMLElement, text: string, pointerOpened: boolean): void {
+    this.point = null
+    this.present(trigger, text, pointerOpened)
+  }
+
+  showAtPoint(trigger: HTMLElement, text: string, point: Point, pointerOpened: boolean): void {
+    this.point = { x: point.x, y: point.y }
+    this.present(trigger, text, pointerOpened)
+  }
+
+  private present(trigger: HTMLElement, text: string, pointerOpened: boolean): void {
     if (!trigger.isConnected || !document.body) return
 
     this.cancelClose()
@@ -93,6 +113,7 @@ class TooltipController {
   close(animate = true): void {
     this.unbindListeners()
     this.detachTrigger()
+    this.point = null
 
     const element = this.element
 
@@ -125,6 +146,7 @@ class TooltipController {
     this.cancelClose()
     this.element?.remove()
     this.element = null
+    this.point = null
   }
 
   private create(): HTMLElement {
@@ -145,22 +167,43 @@ class TooltipController {
 
     if (!element || !trigger) return
 
-    const triggerRect = trigger.getBoundingClientRect()
     const tooltipRect = element.getBoundingClientRect()
-    const gap = 4
     const margin = 8
-
-    let placement: "top" | "bottom" = "top"
-    let top = triggerRect.top - tooltipRect.height - gap
-
-    if (top < margin) {
-      placement = "bottom"
-      top = triggerRect.bottom + gap
-    }
-
-    let left = triggerRect.left + triggerRect.width / 2 - tooltipRect.width / 2
     const maxLeft = Math.max(margin, window.innerWidth - tooltipRect.width - margin)
     const maxTop = Math.max(margin, window.innerHeight - tooltipRect.height - margin)
+    let left: number
+    let top: number
+    let placement: "top" | "bottom" = "top"
+
+    if (this.point) {
+      const gapX = 12
+      const gapY = 14
+
+      left = this.point.x + gapX
+      top = this.point.y + gapY
+      placement = "bottom"
+
+      if (left + tooltipRect.width > window.innerWidth - margin) {
+        left = this.point.x - tooltipRect.width - gapX
+      }
+
+      if (top + tooltipRect.height > window.innerHeight - margin) {
+        top = this.point.y - tooltipRect.height - gapY
+        placement = "top"
+      }
+    } else {
+      const triggerRect = trigger.getBoundingClientRect()
+      const gap = 4
+
+      top = triggerRect.top - tooltipRect.height - gap
+
+      if (top < margin) {
+        placement = "bottom"
+        top = triggerRect.bottom + gap
+      }
+
+      left = triggerRect.left + triggerRect.width / 2 - tooltipRect.width / 2
+    }
 
     left = Math.min(Math.max(left, margin), maxLeft)
     top = Math.min(Math.max(top, margin), maxTop)
@@ -336,9 +379,177 @@ export function installResponseTimes(options: ResponseTimesOptions): ResponseTim
   const tooltip = new TooltipController()
   const decorations = new Map<HTMLElement, Decoration>()
 
+  const eventDocument = root instanceof Document ? root : root.ownerDocument ?? document
+
   let disposed = false
   let scheduled = false
   let observer: MutationObserver | null = null
+  let bodyBlock: HTMLElement | null = null
+  let bodyPoint: Point | null = null
+  let bodyTimer: number | undefined
+  let pointerPressed = false
+  let selectionActive = hasSelection()
+
+  function hasSelection(): boolean {
+    const selection = eventDocument.getSelection()
+    return !!selection && !selection.isCollapsed && selection.toString().trim().length > 0
+  }
+
+  function clearBodyTimer(): void {
+    if (bodyTimer === undefined) return
+    window.clearTimeout(bodyTimer)
+    bodyTimer = undefined
+  }
+
+  function leaveBody(): void {
+    clearBodyTimer()
+
+    if (bodyBlock && tooltip.isOpenFor(bodyBlock)) tooltip.close()
+
+    bodyBlock = null
+    bodyPoint = null
+  }
+
+  function bodyTarget(node: EventTarget | null): HTMLElement | null {
+    if (!(node instanceof Element)) return null
+    if (!node.closest(scopeSelector)) return null
+    if (node.closest(COPY_WRAPPER_SELECTOR) || node.closest(`[${UI_ATTRIBUTE}]`)) return null
+    if (node.closest(INTERACTIVE_SELECTOR)) return null
+
+    const body = node.closest<HTMLElement>(TEXT_PART_BODY_SELECTOR)
+
+    if (!body || !body.closest(TEXT_PART_SELECTOR)) return null
+
+    const block = node.closest<HTMLElement>(BODY_BLOCK_SELECTOR)
+
+    if (!block || block === body || !body.contains(block)) return null
+
+    return block
+  }
+
+  function openBody(): void {
+    clearBodyTimer()
+
+    const block = bodyBlock
+    const point = bodyPoint
+
+    if (
+      !block ||
+      !point ||
+      !block.isConnected ||
+      pointerPressed ||
+      selectionActive ||
+      hasSelection()
+    ) {
+      leaveBody()
+      return
+    }
+
+    const textPart = block.closest<HTMLElement>(TEXT_PART_SELECTOR)
+    const row = block.closest<HTMLElement>("[data-message-id]")
+    const time = options.resolveTime({
+      userMessageID: row?.getAttribute("data-message-id") || undefined,
+      partID: textPart?.getAttribute("data-timeline-part-id") || undefined,
+    })
+
+    if (time === undefined || !Number.isFinite(time)) {
+      if (debug) {
+        console.info(
+          `[agent-response-time] no completion time for ${
+            textPart?.getAttribute("data-timeline-part-id") ?? "response text"
+          }`,
+        )
+      }
+      leaveBody()
+      return
+    }
+
+    const text = formatTime(time, options.locale())
+
+    if (!text) {
+      leaveBody()
+      return
+    }
+
+    tooltip.showAtPoint(block, text, point, true)
+  }
+
+  const onBodyPointerOver = (event: PointerEvent) => {
+    if (event.pointerType === "touch") return
+    if (pointerPressed || selectionActive || hasSelection()) return
+
+    const block = bodyTarget(event.target)
+
+    if (!block) {
+      leaveBody()
+      return
+    }
+
+    if (block === bodyBlock) {
+      bodyPoint = { x: event.clientX, y: event.clientY }
+      return
+    }
+
+    leaveBody()
+    tooltip.close(false)
+    bodyBlock = block
+    bodyPoint = { x: event.clientX, y: event.clientY }
+    bodyTimer = window.setTimeout(() => {
+      bodyTimer = undefined
+      openBody()
+    }, openDelay)
+  }
+
+  const onBodyPointerMove = (event: PointerEvent) => {
+    if (!bodyBlock) return
+
+    if (pointerPressed || selectionActive) {
+      leaveBody()
+      return
+    }
+
+    if (!bodyBlock.isConnected) {
+      leaveBody()
+      return
+    }
+
+    if (event.target instanceof Node && !bodyBlock.contains(event.target)) {
+      leaveBody()
+      return
+    }
+
+    if (bodyTimer !== undefined) bodyPoint = { x: event.clientX, y: event.clientY }
+  }
+
+  const onBodyPointerOut = (event: PointerEvent) => {
+    if (!bodyBlock) return
+    if (event.relatedTarget instanceof Node && bodyBlock.contains(event.relatedTarget)) return
+    leaveBody()
+  }
+
+  const onBodyPointerDown = () => {
+    pointerPressed = true
+    leaveBody()
+  }
+
+  const onBodyPointerUp = () => {
+    pointerPressed = false
+  }
+
+  const onBodyPointerCancel = () => {
+    pointerPressed = false
+    leaveBody()
+  }
+
+  const onSelectionChange = () => {
+    if (hasSelection()) {
+      selectionActive = true
+      leaveBody()
+      return
+    }
+
+    selectionActive = false
+  }
 
   function collectWrappers(): HTMLElement[] {
     if (root instanceof Document) {
@@ -525,6 +736,14 @@ export function installResponseTimes(options: ResponseTimesOptions): ResponseTim
     attributeFilter: ["data-interrupted"],
   })
 
+  eventDocument.addEventListener("pointerover", onBodyPointerOver, true)
+  eventDocument.addEventListener("pointermove", onBodyPointerMove, true)
+  eventDocument.addEventListener("pointerout", onBodyPointerOut, true)
+  eventDocument.addEventListener("pointerdown", onBodyPointerDown, true)
+  eventDocument.addEventListener("pointerup", onBodyPointerUp, true)
+  eventDocument.addEventListener("pointercancel", onBodyPointerCancel, true)
+  eventDocument.addEventListener("selectionchange", onSelectionChange)
+
   scan()
 
   if (debug) {
@@ -540,6 +759,16 @@ export function installResponseTimes(options: ResponseTimesOptions): ResponseTim
       observer?.disconnect()
       observer = null
       scheduled = false
+
+      eventDocument.removeEventListener("pointerover", onBodyPointerOver, true)
+      eventDocument.removeEventListener("pointermove", onBodyPointerMove, true)
+      eventDocument.removeEventListener("pointerout", onBodyPointerOut, true)
+      eventDocument.removeEventListener("pointerdown", onBodyPointerDown, true)
+      eventDocument.removeEventListener("pointerup", onBodyPointerUp, true)
+      eventDocument.removeEventListener("pointercancel", onBodyPointerCancel, true)
+      eventDocument.removeEventListener("selectionchange", onSelectionChange)
+
+      leaveBody()
 
       for (const decoration of decorations.values()) decoration.cleanup()
       decorations.clear()
